@@ -1,4 +1,4 @@
-- var pjaxExclude = 'a:not([target="_blank"])'
+- var pjaxExclude = 'a:not([target="_blank"]):not([data-fancybox])'
 if theme.pjax.exclude
   each val in theme.pjax.exclude
     - pjaxExclude += `:not([href="${val}"])`
@@ -7,14 +7,16 @@ if theme.pjax.exclude
 
 - let choose = theme.comments.use
 if choose
-  if theme.Open_Graph_meta.enable && (choose.includes('Livere') || choose.includes('Utterances') || choose.includes('Giscus'))
-    - pjaxSelectors.unshift('meta[property="og:image"]', 'meta[property="og:title"]', 'meta[property="og:url"]')
-  if choose.includes('Utterances') || choose.includes('Giscus')
+  if choose.includes('Livere') || choose.includes('Utterances') || choose.includes('Giscus')
     - pjaxSelectors.unshift('link[rel="canonical"]')
+    if theme.Open_Graph_meta.enable
+      - pjaxSelectors.unshift('meta[property="og:image"]', 'meta[property="og:title"]', 'meta[property="og:url"]', 'meta[property="og:description"]')
+    else
+      - pjaxSelectors.unshift('meta[name="description"]')
 
-script(src=url_for(theme.asset.pjax))
+script(src=url_for(theme.asset.pjax) defer)
 script.
-  (() => {
+  document.addEventListener('DOMContentLoaded', () => {
     const pjaxSelectors = !{JSON.stringify(pjaxSelectors)}
 
     window.pjax = new Pjax({
@@ -27,7 +29,13 @@ script.
 
     const triggerPjaxFn = (val) => {
       if (!val) return
-      Object.values(val).forEach(fn => fn())
+      Object.values(val).forEach(fn => {
+        try {
+          fn()
+        } catch (err) {
+          console.debug('Pjax callback failed:', err)
+        }
+      })
     }
 
     document.addEventListener('pjax:send', () => {
@@ -45,8 +53,9 @@ script.
     document.addEventListener('pjax:complete', () => {
       btf.removeGlobalFnEvent('pjaxCompleteOnce')
       document.querySelectorAll('script[data-pjax]').forEach(item => {
+        if (!item.parentNode) return
         const newScript = document.createElement('script')
-        const content = item.text || item.textContent || item.innerHTML || ""
+        const content = item.text || item.textContent || ''
         Array.from(item.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value))
         newScript.appendChild(document.createTextNode(content))
         item.parentNode.replaceChild(newScript, item)
@@ -56,8 +65,13 @@ script.
     })
 
     document.addEventListener('pjax:error', e => {
-      if (e.request.status === 404) {
-        pjax.loadUrl('!{url_for("/404.html")}')
+      const responseURL = e.request && e.request.responseURL
+      if (e.request && e.request.status === 404) {
+        !{theme.error_404 && theme.error_404.enable}
+          ? pjax.loadUrl('!{url_for("/404.html")}')
+          : responseURL && (window.location.href = responseURL)
+      } else if (responseURL) {
+        window.location.href = responseURL
       }
     })
-  })()
+  })

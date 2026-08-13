@@ -41,10 +41,6 @@ div
   != partial("includes/third-party/effect", {}, { cache: true })
   != partial("includes/third-party/chat/index", {}, { cache: true })
 
-  if theme.aplayerInject && theme.aplayerInject.enable
-    if theme.pjax.enable || theme.aplayerInject.per_page || page.aplayer
-      include ./third-party/aplayer.pug
-
   if theme.pjax.enable
     != partial("includes/third-party/pjax", {}, { cache: true })
 
@@ -52,6 +48,10 @@ div
     != partial("includes/third-party/umami_analytics", {}, { cache: true })
 
   if theme.busuanzi.site_uv || theme.busuanzi.site_pv || theme.busuanzi.page_pv
-    script(async data-pjax src= theme.asset.busuanzi || '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js')
+    script(async data-pjax src=theme.asset.busuanzi ? url_for(theme.asset.busuanzi) : '//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js')
 
   != partial('includes/third-party/search/index', {}, { cache: true })
+
+  if theme.google_tag_manager && theme.google_tag_manager.tag_id
+    noscript
+      iframe(src=`${theme.google_tag_manager.domain ? theme.google_tag_manager.domain : 'https://www.googletagmanager.com'}/ns.html?id=${theme.google_tag_manager.tag_id}` height="0" width="0" style="display:none;visibility:hidden")
